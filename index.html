@@ -58,7 +58,7 @@ input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;bord
       <span class="small">Room code:</span><span class="code" id="roomCode"></span>
       <button class="ghost" id="copy">Copy invite link</button>
     </div>
-    <div class="small" id="status" style="margin-top:8px">Create a room, send her the link, and you're connected.</div>
+    <div class="small" id="status" style="margin-top:8px">Create a room and send her the link.</div>
   </div>
 
   <div id="stage" style="margin-top:10px">
@@ -84,25 +84,58 @@ input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;bord
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
 <script>
 (function(){
 var $=function(i){return document.getElementById(i)};
-var v=$('v'),fx=$('fx'),peer=null,conn=null,isHost=false,applying=false;
+var v=$('v'),fx=$('fx');
+var isHost=false,room=null,partner=false,lastSeen=0,applying=false;
+var myId=Math.random().toString(36).slice(2,10),seen={},clients=[];
 var me={ready:false,file:null},them={ready:false,file:null,name:'Them'};
 var STK=['❤️','😂','😍','😭','🔥','👏','😱','🥺','💋','🎉','🍿','👀'];
-var PFX='wt-love-';
-var CFG={debug:1,config:{iceServers:[
- {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
- {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
-]}};
-if(typeof Peer==='undefined'){document.addEventListener('DOMContentLoaded',function(){var s=document.getElementById('status');if(s)s.textContent='⚠️ The connection library did not load (blocked by network/adblock?). Try another browser or turn off adblock.'})}
+var BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
 
 try{var n=localStorage.getItem('wt_name');if(n)$('name').value=n}catch(e){}
 $('name').addEventListener('change',function(){try{localStorage.setItem('wt_name',$('name').value)}catch(e){}});
 function myName(){return ($('name').value||'Me').slice(0,16)}
 function status(t){$('status').textContent=t}
-function send(o){if(conn&&conn.open){try{conn.send(o)}catch(e){}}}
+
+/* ---------- transport (small relay via public MQTT brokers) ---------- */
+function send(o){
+  if(!room)return;
+  o.id=myId;o.mid=myId+Math.random().toString(36).slice(2,8);
+  var str=JSON.stringify(o);
+  clients.forEach(function(c){if(c.connected){try{c.publish('wtlove/'+room,str)}catch(e){}}});
+}
+function openTransport(){
+  if(typeof mqtt==='undefined'){status('⚠️ The connection library did not load (adblock or network?). Try another browser or turn off adblock.');return}
+  BROKERS.forEach(function(url){
+    var c=mqtt.connect(url,{clientId:'wt'+myId+Math.random().toString(36).slice(2,5),reconnectPeriod:3000,connectTimeout:8000});
+    clients.push(c);
+    c.on('connect',function(){
+      c.subscribe('wtlove/'+room);
+      status(partner?'💞 Connected!':(isHost?'Room is open. Waiting for her to join…':'Joined. Looking for the host…'));
+      send({type:'hello',name:myName(),reply:false});
+    });
+    c.on('message',function(t,buf){
+      var d;try{d=JSON.parse(buf.toString())}catch(e){return}
+      if(!d||d.id===myId||seen[d.mid])return;
+      seen[d.mid]=1;
+      var keys=Object.keys(seen);if(keys.length>400)delete seen[keys[0]];
+      lastSeen=Date.now();
+      onData(d);
+    });
+    c.on('error',function(){});
+  });
+  setTimeout(function(){
+    var ok=clients.some(function(c){return c.connected});
+    if(!ok)status('Could not reach the relay servers. Check your internet, turn off adblock/VPN, and refresh.');
+  },12000);
+  setInterval(function(){
+    send({type:'ping'});
+    if(partner&&Date.now()-lastSeen>15000){partner=false;them={ready:false,file:null,name:'Them'};updatePills();status('Partner disconnected… waiting.')}
+  },5000);
+}
 
 /* ---------- overlay ---------- */
 function showComment(who,text){
@@ -133,54 +166,17 @@ STK.forEach(function(s){
   $('stickers').appendChild(b);
 });
 
-/* ---------- connection ---------- */
-function code(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<5;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
-function showRoom(c){
+/* ---------- room ---------- */
+function code(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<7;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function enter(c,host){
+  room=c;isHost=host;
   $('startRow').classList.add('hide');$('roomRow').classList.remove('hide');$('roomCode').textContent=c;
+  status('Connecting to relay…');openTransport();
 }
-function createRoom(){
-  isHost=true;var c=code();
-  peer=new Peer(PFX+c,CFG);
-  peer.on('open',function(){showRoom(c);status('Waiting for her to join… send her the invite link.')});
-  peer.on('disconnected',function(){status('Lost the signaling server. Refresh and make a new room.')});
-  peer.on('connection',function(cn){
-    if(conn&&conn.open){cn.close();return}
-    setConn(cn);
-  });
-  peer.on('error',function(e){
-    if(e.type==='unavailable-id'){peer.destroy();createRoom()}
-    else status('Connection problem: '+e.type+'. Refresh and try again.');
-  });
-}
-function joinRoom(c){
-  c=(c||'').trim().toUpperCase();if(!c)return;
-  isHost=false;peer=new Peer(undefined,CFG);
-  peer.on('open',function(){showRoom(c);status('Found the server, reaching the host…');var cn=peer.connect(PFX+c,{reliable:true});setConn(cn);
-    setTimeout(function(){if(!cn.open)status('Still not connected after 20s. Make sure the host is still on the page with the room open, then both of you refresh and try again. If it keeps failing, try both on Wi-Fi.')},20000)});
-  peer.on('disconnected',function(){status('Lost the signaling server. Refresh and try again.')});
-  peer.on('error',function(e){
-    status(e.type==='peer-unavailable'?'No room with that code. Check it or ask for a new link.':'Connection problem: '+e.type+'.');
-  });
-}
-function setConn(cn){
-  conn=cn;
-  cn.on('open',function(){
-    status('💞 Connected!');
-    them.name='Them';updatePills();
-    send({type:'hello',name:myName()});
-    send({type:'ready',ready:me.ready,file:me.file});
-  });
-  cn.on('data',onData);
-  cn.on('error',function(e){status('Link error: '+(e&&e.type||e))});
-  cn.on('close',function(){
-    status('Connection lost. Refresh to reconnect.');
-    them={ready:false,file:null,name:'Them'};updatePills();
-  });
-}
-$('create').onclick=createRoom;
-$('join').onclick=function(){joinRoom($('joinCode').value)};
+$('create').onclick=function(){enter(code(),true)};
+$('join').onclick=function(){var c=$('joinCode').value.trim().toUpperCase();if(c)enter(c,false)};
 $('copy').onclick=function(){
-  var url=location.origin+location.pathname+'?room='+$('roomCode').textContent;
+  var url=location.origin+location.pathname+'?room='+room;
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){status('Invite link copied!')},function(){status(url)});
   else status(url);
 };
@@ -189,7 +185,7 @@ $('copy').onclick=function(){
 /* ---------- ready / countdown ---------- */
 function updatePills(){
   $('you').textContent='You: '+(me.file?(me.ready?'ready ✅':'video loaded'):'no video');
-  $('them').textContent=(them.name||'Them')+': '+(conn&&conn.open?(them.ready?'ready ✅':(them.file?'video loaded':'no video')):'not connected');
+  $('them').textContent=(them.name||'Them')+': '+(partner?(them.ready?'ready ✅':(them.file?'video loaded':'no video')):'not connected');
   $('ready').textContent=me.ready?'✅ Ready (tap to undo)':"✅ I'm ready";
   $('ready').className=me.ready?'on':'';
   $('ready').disabled=!me.file;
@@ -202,14 +198,13 @@ $('file').addEventListener('change',function(e){
 });
 $('ready').onclick=function(){
   me.ready=!me.ready;
-  if(me.ready){v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})} // unlock autoplay on phones
+  if(me.ready){v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})}
   updatePills();send({type:'ready',ready:me.ready,file:me.file});
   checkGo();
 };
-function filesMatch(){return me.file&&them.file&&me.file.size===them.file.size}
 function checkGo(){
-  if(isHost&&me.ready&&them.ready&&conn&&conn.open){
-    if(!filesMatch()){status('⚠️ Your files look different ('+me.file.name+' vs '+them.file.name+'). Sync may be off.')}
+  if(isHost&&partner&&me.ready&&them.ready){
+    if(me.file&&them.file&&me.file.size!==them.file.size)status('⚠️ Your files look different ('+me.file.name+' vs '+them.file.name+'). Sync may be off.');
     send({type:'go'});countdown();
   }
 }
@@ -243,8 +238,14 @@ $('fs').onclick=function(){
 
 /* ---------- incoming ---------- */
 function onData(d){
-  if(!d||typeof d!=='object')return;
-  if(d.type==='hello'){them.name=String(d.name||'Them').slice(0,16);updatePills()}
+  if(d.type==='hello'){
+    var wasHere=partner;partner=true;them.name=String(d.name||'Them').slice(0,16);
+    status('💞 Connected!');updatePills();
+    if(!wasHere){send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
+  }
+  else if(d.type==='ping'){
+    if(!partner){partner=true;status('💞 Connected!');updatePills();send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
+  }
   else if(d.type==='ready'){
     them.ready=!!d.ready;
     them.file=(d.file&&typeof d.file.size==='number')?{name:String(d.file.name).slice(0,80),size:d.file.size}:null;
