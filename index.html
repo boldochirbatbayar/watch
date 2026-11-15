@@ -54,9 +54,6 @@ video{width:100%;height:100%;display:block;background:#000}
 #empty span{font-size:42px}
 #fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(60px,18vw,160px);font-weight:800;color:#fff;text-shadow:0 4px 20px #000;background:#0006;pointer-events:none}
-.fly{position:absolute;left:100%;white-space:nowrap;color:#fff;font-weight:700;font-size:clamp(14px,2.6vw,28px);text-shadow:0 2px 6px #000,0 0 3px #000;animation:fly 9s linear forwards}
-.fly small{opacity:.85;font-weight:600;margin-right:6px;color:#ffc2d9}
-@keyframes fly{to{transform:translateX(calc(-100vw - 100%))}}
 .stk{position:absolute;font-size:clamp(48px,11vw,110px);animation:pop 3s ease-out forwards;filter:drop-shadow(0 4px 8px #0008);text-align:center}
 .stk i{display:block;font-style:normal;font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000}
 @keyframes pop{0%{transform:scale(.2) rotate(-15deg);opacity:0}15%{transform:scale(1.2) rotate(6deg);opacity:1}30%{transform:scale(1)}85%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
@@ -84,14 +81,53 @@ video{width:100%;height:100%;display:block;background:#000}
 .playing #setup{display:none}
 .hide,[hidden]{display:none!important}
 @media (max-width:520px){.hero{margin-top:3vh}.invite .code{font-size:20px}}
+
+body::before,body::after{content:"";position:fixed;z-index:-1;width:60vmax;height:60vmax;border-radius:50%;filter:blur(90px);opacity:.28;animation:blob 22s ease-in-out infinite alternate;pointer-events:none}
+body::before{background:var(--accent);top:-20vmax;left:-15vmax}
+body::after{background:var(--accent2);bottom:-25vmax;right:-15vmax;animation-delay:-11s}
+@keyframes blob{to{transform:translate(12vmax,8vmax) scale(1.2)}}
+.heart{position:fixed;bottom:-30px;font-size:22px;opacity:.55;animation:hrise 9s linear forwards;pointer-events:none;z-index:-1}
+@keyframes hrise{to{transform:translateY(-110vh) rotate(25deg);opacity:0}}
+.card{animation:rise .55s cubic-bezier(.2,.9,.3,1.15) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.97)}}
+button:hover,.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.steps li.done .dot{animation:dotpop .5s}
+@keyframes dotpop{0%{transform:scale(.4)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.chip::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:7px;animation:pulse 1.3s infinite}
+.chip.ok::before{background:var(--ok);animation:none}
+@keyframes pulse{50%{opacity:.3;transform:scale(1.5)}}
+#themes{display:flex;gap:6px}
+.tdot{padding:0;width:20px;height:20px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+body.playing #stage:not(.fsx){box-shadow:0 0 0 1px #fff2,0 0 55px -5px var(--accent)}
+#toasts{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--card);backdrop-filter:blur(10px);border:1px solid var(--line);padding:10px 16px;border-radius:14px;box-shadow:0 8px 30px #0003;animation:tin .4s cubic-bezier(.2,1.4,.4,1) both,tout .4s 2.8s forwards}
+@keyframes tin{from{opacity:0;transform:translateY(-20px) scale(.9)}}
+@keyframes tout{to{opacity:0;transform:translateY(-10px)}}
+#cm{position:absolute;left:12px;bottom:calc(62px + var(--capH,0px));max-width:min(80%,430px);display:flex;flex-direction:column;gap:6px;align-items:flex-start;transition:bottom .2s}
+.bub{display:flex;gap:8px;align-items:center;background:#000a;backdrop-filter:blur(6px);color:#fff;padding:6px 14px 6px 6px;border-radius:20px;font-size:clamp(13px,1.9vw,18px);line-height:1.3;word-break:break-word;animation:bin .45s cubic-bezier(.2,1.4,.4,1) both,bout .5s 6.5s forwards}
+.bub.mine{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.bub .av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none}
+.bub b{opacity:.8;margin-right:6px;font-size:.85em}
+@keyframes bin{from{opacity:0;transform:translateY(26px) scale(.6)}}
+@keyframes bout{to{opacity:0;transform:translateY(-10px)}}
+#cap{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);max-width:80%;text-align:center;color:#fff;background:#000b;padding:4px 12px;border-radius:8px;font-size:calc(clamp(14px,2.4vw,24px) * var(--cs,1));line-height:1.35;white-space:pre-line;display:none}
+.sp{position:absolute;font-size:22px;animation:burst 1.2s ease-out forwards}
+@keyframes burst{from{opacity:1;transform:translate(0,0) scale(.6)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.2)}}
+#count span{display:inline-block;animation:cpop .95s ease-out both}
+@keyframes cpop{0%{transform:scale(2.4);opacity:0}30%{opacity:1}100%{transform:scale(.8);opacity:.2}}
+.panel2{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:14px}
+.panel2.open{display:flex}
+.panel2 button,.panel2 .btn{padding:8px 12px}
+@media (prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="logo">💕 Watch Together</div>
+    <span id="themes"></span>
     <span class="chip" id="chip">Not connected</span>
-    <span class="ver">v7</span>
+    <span class="ver">v8</span>
   </header>
 
   <!-- Step 0: lobby -->
@@ -137,13 +173,14 @@ video{width:100%;height:100%;display:block;background:#000}
     <div id="stage">
       <video id="v" playsinline controls></video>
       <div id="empty"><span>🎬</span>Choose a video to begin.<br>You both need the same file.</div>
-      <div id="fx"></div>
+      <div id="fx"><div id="cm"></div><div id="cap"></div></div>
       <div id="count"></div>
       <div class="sbar">
         <button class="fab" id="sfab" title="Comments and stickers">💬</button>
         <div class="sbody">
           <input type="text" id="smsg" maxlength="120" placeholder="Comment…" autocomplete="off">
           <button id="ssend">Send</button>
+          <button class="ibtn" id="scc" title="Subtitles on/off">CC</button>
           <button class="ibtn" id="sexit">✕ Exit</button>
           <div class="tray" id="strayRow"></div>
         </div>
@@ -155,14 +192,23 @@ video{width:100%;height:100%;display:block;background:#000}
         <input type="text" id="msg" maxlength="120" placeholder="Type a comment and press Enter…" autocomplete="off">
         <button id="send">Send</button>
         <button class="ibtn" id="stk" title="Stickers">😊</button>
+        <button class="ibtn" id="ccBtn" title="Subtitles">CC</button>
         <button class="ibtn" id="fs" title="Fullscreen (comments stay visible)">⛶</button>
         <button class="ibtn" id="setupBtn" title="Show or hide setup">⚙️</button>
       </div>
       <div class="tray" id="trayRow"></div>
+      <div class="panel2" id="capPanel">
+        <label class="btn ghost">📄 Load subtitles (.srt / .vtt)<input id="capFile" type="file" accept=".srt,.vtt,.txt" hidden></label>
+        <button class="ghost" id="capOn">CC: on</button>
+        <button class="ghost" id="capM" title="Subtitles earlier">−0.5s</button><b id="capOffV">0.0s</b><button class="ghost" id="capP" title="Subtitles later">+0.5s</button>
+        <button class="ghost" id="capS1">A−</button><button class="ghost" id="capS2">A+</button>
+        <small style="color:var(--muted)">Subtitles are only on your device. Your partner loads their own.</small>
+      </div>
     </div>
   </section>
 </div>
 
+<div id="toasts"></div>
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
 <script>
 (function(){
@@ -216,30 +262,42 @@ function openTransport(){
   },12000);
   setInterval(function(){
     send({type:'ping'});
-    if(partner&&Date.now()-lastSeen>15000){partner=false;them={ready:false,file:null,name:'Them'};updatePills();status('Partner disconnected… waiting.')}
+    if(partner&&Date.now()-lastSeen>15000){partner=false;them={ready:false,file:null,name:'Them'};updatePills();toast('Partner disconnected…');status('Partner disconnected… waiting.')}
   },5000);
 }
 
 
 /* ---------- overlay ---------- */
-function showComment(who,text){
-  var d=document.createElement('div');d.className='fly';
-  var s=document.createElement('small');s.textContent=who;
-  d.appendChild(s);d.appendChild(document.createTextNode(text));
-  d.style.top=(6+Math.random()*68)+'%';
-  fx.appendChild(d);setTimeout(function(){d.remove()},9500);
+function hue(t){var h=0;for(var i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))%360;return h}
+function showComment(who,text,mine){
+  var box=$('cm'),d=document.createElement('div');d.className='bub'+(mine?' mine':'');
+  var av=document.createElement('span');av.className='av';av.textContent=(who.charAt(0)||'?').toUpperCase();av.style.background='hsl('+hue(who)+',70%,50%)';
+  var w=document.createElement('span'),bn=document.createElement('b');bn.textContent=who;
+  w.appendChild(bn);w.appendChild(document.createTextNode(text));d.appendChild(av);d.appendChild(w);
+  box.appendChild(d);while(box.children.length>5)box.firstChild.remove();
+  setTimeout(function(){d.remove()},7000);
+}
+function burst(emoji,x,y,n,spread){
+  for(var k=0;k<n;k++){
+    var p=document.createElement('div');p.className='sp';p.textContent=emoji;
+    var a=k/n*6.283+Math.random();
+    p.style.cssText='left:'+x+'%;top:'+y+'%;--dx:'+Math.cos(a)*spread+'px;--dy:'+Math.sin(a)*spread+'px';
+    fx.appendChild(p);setTimeout(function(q){q.remove()},1300,p);
+  }
 }
 function showSticker(who,emoji){
-  var d=document.createElement('div');d.className='stk';
-  d.textContent=emoji;
+  var d=document.createElement('div');d.className='stk';d.textContent=emoji;
   var i=document.createElement('i');i.textContent=who;d.appendChild(i);
-  d.style.left=(8+Math.random()*75)+'%';d.style.top=(15+Math.random()*50)+'%';
-  fx.appendChild(d);setTimeout(function(){d.remove()},3100);
+  var x=8+Math.random()*70,y=12+Math.random()*40;
+  d.style.left=x+'%';d.style.top=y+'%';fx.appendChild(d);setTimeout(function(){d.remove()},3100);
+  burst(emoji,x+5,y+8,8,90);
 }
+function confetti(){['🎉','✨','💖','🍿'].forEach(function(e,i){burst(e,50,50,8,140+i*40)})}
+function toast(t){var d=document.createElement('div');d.className='toast';d.textContent=t;$('toasts').appendChild(d);setTimeout(function(){d.remove()},3300)}
 function sendText(inp){
   var t=inp.value.trim();if(!t)return;
   inp.value='';
-  showComment(myName(),t);
+  showComment(myName(),t,true);
   send({type:'chat',who:myName(),text:t.slice(0,120)});
 }
 $('send').onclick=function(){sendText($('msg'))};
@@ -276,7 +334,7 @@ $('joinInvite').onclick=function(){if(!needName())enter($('inviteCode').textCont
 $('copy').onclick=function(){
   var url=location.origin+location.pathname+'?room='+room;
   var b=$('copy');
-  function done(t){b.textContent=t;setTimeout(function(){b.textContent='🔗 Copy invite link'},2000)}
+  function done(t){toast(t);b.textContent=t;setTimeout(function(){b.textContent='🔗 Copy invite link'},2000)}
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){done('✅ Copied!')},function(){done('Press and hold to copy');status(url)});
   else{status(url);done('Link shown below')}
 };
@@ -317,12 +375,12 @@ function checkGo(){
   }
 }
 function countdown(){
-  var n=3,c=$('count');c.style.display='flex';c.textContent=n;
+  var n=3,c=$('count');c.style.display='flex';c.innerHTML='<span>'+n+'</span>';
   var t=setInterval(function(){
     n--;
-    if(n>0){c.textContent=n}
+    if(n>0){c.innerHTML='<span>'+n+'</span>'}
     else{
-      clearInterval(t);c.textContent='▶';
+      clearInterval(t);c.innerHTML='<span>▶</span>';confetti();
       setTimeout(function(){c.style.display='none'},500);
       ign();v.currentTime=0;v.playbackRate=1;
       v.play().catch(function(){status('Tap play once so your browser allows playback.')});
@@ -422,10 +480,10 @@ function onData(d){
   if(d.type==='hello'){
     var wasHere=partner;partner=true;them.name=String(d.name||'Them').slice(0,16);
     status('💞 Connected!');updatePills();
-    if(!wasHere){send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
+    if(!wasHere){toast('💞 '+them.name+' joined!');send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
   }
   else if(d.type==='ping'){
-    if(!partner){partner=true;status('💞 Connected!');updatePills();send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
+    if(!partner){partner=true;toast('💞 '+them.name+' joined!');status('💞 Connected!');updatePills();send({type:'hello',name:myName(),reply:true});send({type:'ready',ready:me.ready,file:me.file})}
   }
   else if(d.type==='ready'){
     them.ready=!!d.ready;
@@ -444,7 +502,61 @@ function onData(d){
   }
 }
 
-updatePills();relayInfo();
+/* ---------- subtitles (SRT / VTT, shown on your device) ---------- */
+var cues=[],capOn=true,capOff=0,capSize=1,capTxt='';
+function tsec(t){var m=t.trim().replace(',','.').split(':').map(parseFloat);return m.length===3?m[0]*3600+m[1]*60+m[2]:m[0]*60+m[1]}
+function parseCaps(txt){
+  var out=[];txt=txt.replace(/^\uFEFF/,'').replace(/\r/g,'');
+  txt.split(/\n{2,}/).forEach(function(b){
+    var L=b.split('\n'),i=0;while(i<L.length&&L[i].indexOf('-->')<0)i++;
+    if(i>=L.length)return;
+    var m=L[i].match(/([\d:.,]+)\s*-->\s*([\d:.,]+)/);if(!m)return;
+    var t=L.slice(i+1).join('\n').replace(/<[^>]+>/g,'').replace(/\{[^}]*\}/g,'').trim();
+    if(t)out.push({a:tsec(m[1]),b:tsec(m[2]),t:t});
+  });
+  return out.sort(function(x,y){return x.a-y.a});
+}
+function updCap(){
+  $('capOn').textContent='CC: '+(capOn?'on':'off');
+  $('capOffV').textContent=(capOff>0?'+':'')+capOff.toFixed(1)+'s';
+  $('scc').style.opacity=capOn?1:.5;fx.style.setProperty('--cs',capSize);capTxt=null;
+}
+$('capFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  f.arrayBuffer().then(function(buf){
+    var t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(x){t=new TextDecoder('windows-1252').decode(buf)}
+    cues=parseCaps(t);capOn=true;updCap();
+    toast(cues.length?'💬 Loaded '+cues.length+' subtitle lines':'Couldn’t read that file. Use .srt or .vtt');
+  });
+  e.target.value='';
+});
+function togCap(){capOn=!capOn;updCap()}
+$('capOn').onclick=togCap;$('scc').onclick=togCap;
+$('ccBtn').onclick=function(){$('capPanel').classList.toggle('open')};
+$('capM').onclick=function(){capOff-=0.5;updCap()};$('capP').onclick=function(){capOff+=0.5;updCap()};
+$('capS1').onclick=function(){capSize=Math.max(.6,capSize-.15);updCap()};
+$('capS2').onclick=function(){capSize=Math.min(2,capSize+.15);updCap()};
+setInterval(function(){
+  var tt=v.currentTime-capOff,txt='';
+  if(capOn)for(var i=0;i<cues.length;i++){var q=cues[i];if(tt>=q.a&&tt<=q.b){txt=q.t;break}if(q.a>tt)break}
+  if(txt!==capTxt){
+    capTxt=txt;var c=$('cap');c.textContent=txt;c.style.display=txt?'block':'none';
+    fx.style.setProperty('--capH',txt?(c.offsetHeight+8)+'px':'0px');
+  }
+},150);
+
+/* ---------- colors + floating hearts ---------- */
+var TH=[['#e0457b','#a855f7'],['#2563eb','#06b6d4'],['#16a34a','#65a30d'],['#f97316','#ef4444']];
+function setTheme(i){var r=document.documentElement.style;r.setProperty('--accent',TH[i][0]);r.setProperty('--accent2',TH[i][1]);try{localStorage.setItem('wt_th',i)}catch(e){}}
+TH.forEach(function(t,i){var b=document.createElement('button');b.className='tdot';b.title='Color';b.style.background='linear-gradient(135deg,'+t[0]+','+t[1]+')';b.onclick=function(){setTheme(i)};$('themes').appendChild(b)});
+try{var ti=localStorage.getItem('wt_th');if(ti!==null)setTheme(+ti)}catch(e){}
+setInterval(function(){
+  if(document.hidden||document.body.classList.contains('playing'))return;
+  var h=document.createElement('div');h.className='heart';h.textContent=['💗','💖','✨','🤍'][Math.floor(Math.random()*4)];
+  h.style.left=Math.random()*100+'vw';document.body.appendChild(h);setTimeout(function(){h.remove()},9500);
+},1100);
+
+updatePills();relayInfo();updCap();
 })();
 </script>
 </body>
