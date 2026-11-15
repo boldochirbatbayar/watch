@@ -92,6 +92,11 @@ var v=$('v'),fx=$('fx'),peer=null,conn=null,isHost=false,applying=false;
 var me={ready:false,file:null},them={ready:false,file:null,name:'Them'};
 var STK=['❤️','😂','😍','😭','🔥','👏','😱','🥺','💋','🎉','🍿','👀'];
 var PFX='wt-love-';
+var CFG={debug:1,config:{iceServers:[
+ {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+ {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
+]}};
+if(typeof Peer==='undefined'){document.addEventListener('DOMContentLoaded',function(){var s=document.getElementById('status');if(s)s.textContent='⚠️ The connection library did not load (blocked by network/adblock?). Try another browser or turn off adblock.'})}
 
 try{var n=localStorage.getItem('wt_name');if(n)$('name').value=n}catch(e){}
 $('name').addEventListener('change',function(){try{localStorage.setItem('wt_name',$('name').value)}catch(e){}});
@@ -135,8 +140,9 @@ function showRoom(c){
 }
 function createRoom(){
   isHost=true;var c=code();
-  peer=new Peer(PFX+c);
+  peer=new Peer(PFX+c,CFG);
   peer.on('open',function(){showRoom(c);status('Waiting for her to join… send her the invite link.')});
+  peer.on('disconnected',function(){status('Lost the signaling server. Refresh and make a new room.')});
   peer.on('connection',function(cn){
     if(conn&&conn.open){cn.close();return}
     setConn(cn);
@@ -148,8 +154,10 @@ function createRoom(){
 }
 function joinRoom(c){
   c=(c||'').trim().toUpperCase();if(!c)return;
-  isHost=false;peer=new Peer();
-  peer.on('open',function(){showRoom(c);status('Connecting…');setConn(peer.connect(PFX+c,{reliable:true}))});
+  isHost=false;peer=new Peer(undefined,CFG);
+  peer.on('open',function(){showRoom(c);status('Found the server, reaching the host…');var cn=peer.connect(PFX+c,{reliable:true});setConn(cn);
+    setTimeout(function(){if(!cn.open)status('Still not connected after 20s. Make sure the host is still on the page with the room open, then both of you refresh and try again. If it keeps failing, try both on Wi-Fi.')},20000)});
+  peer.on('disconnected',function(){status('Lost the signaling server. Refresh and try again.')});
   peer.on('error',function(e){
     status(e.type==='peer-unavailable'?'No room with that code. Check it or ask for a new link.':'Connection problem: '+e.type+'.');
   });
@@ -163,6 +171,7 @@ function setConn(cn){
     send({type:'ready',ready:me.ready,file:me.file});
   });
   cn.on('data',onData);
+  cn.on('error',function(e){status('Link error: '+(e&&e.type||e))});
   cn.on('close',function(){
     status('Connection lost. Refresh to reconnect.');
     them={ready:false,file:null,name:'Them'};updatePills();
