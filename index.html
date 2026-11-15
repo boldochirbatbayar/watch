@@ -42,7 +42,7 @@ input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;bord
 </head>
 <body>
 <div class="wrap">
-  <h1>💕 Watch Together</h1>
+  <h1>💕 Watch Together <span class="small">v4</span></h1>
 
   <div class="panel" id="connectPanel">
     <div class="bar">
@@ -58,7 +58,8 @@ input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;bord
       <span class="small">Room code:</span><span class="code" id="roomCode"></span>
       <button class="ghost" id="copy">Copy invite link</button>
     </div>
-    <div class="small" id="status" style="margin-top:8px">Create a room and send her the link.</div>
+    <div class="small" id="relays" style="margin-top:8px"></div>
+    <div class="small" id="status" style="margin-top:4px">Create a room and send her the link.</div>
   </div>
 
   <div id="stage" style="margin-top:10px">
@@ -93,7 +94,9 @@ var isHost=false,room=null,partner=false,lastSeen=0,applying=false;
 var myId=Math.random().toString(36).slice(2,10),seen={},clients=[];
 var me={ready:false,file:null},them={ready:false,file:null,name:'Them'};
 var STK=['❤️','😂','😍','😭','🔥','👏','😱','🥺','💋','🎉','🍿','👀'];
-var BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
+var BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081','wss://mqtt.eclipseprojects.io/mqtt'];
+var RN=['emqx','hivemq','mosquitto','eclipse'],RS=['…','…','…','…'];
+function relayInfo(){var e=$('relays');if(e)e.textContent='Relays: '+RN.map(function(n,i){return n+' '+RS[i]}).join(' · ')}
 
 try{var n=localStorage.getItem('wt_name');if(n)$('name').value=n}catch(e){}
 $('name').addEventListener('change',function(){try{localStorage.setItem('wt_name',$('name').value)}catch(e){}});
@@ -109,11 +112,12 @@ function send(o){
 }
 function openTransport(){
   if(typeof mqtt==='undefined'){status('⚠️ The connection library did not load (adblock or network?). Try another browser or turn off adblock.');return}
-  BROKERS.forEach(function(url){
+  BROKERS.forEach(function(url,bi){
     var c=mqtt.connect(url,{clientId:'wt'+myId+Math.random().toString(36).slice(2,5),reconnectPeriod:3000,connectTimeout:8000});
     clients.push(c);
     c.on('connect',function(){
-      c.subscribe('wtlove/'+room);
+      RS[bi]='✅';relayInfo();
+      c.subscribe('wtlove/'+room,function(){send({type:'hello',name:myName(),reply:false})});
       status(partner?'💞 Connected!':(isHost?'Room is open. Waiting for her to join…':'Joined. Looking for the host…'));
       send({type:'hello',name:myName(),reply:false});
     });
@@ -125,7 +129,8 @@ function openTransport(){
       lastSeen=Date.now();
       onData(d);
     });
-    c.on('error',function(){});
+    c.on('error',function(){RS[bi]='❌';relayInfo()});
+    c.on('close',function(){if(!c.connected){RS[bi]='❌';relayInfo()}});
   });
   setTimeout(function(){
     var ok=clients.some(function(c){return c.connected});
