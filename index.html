@@ -42,7 +42,7 @@ input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;bord
 </head>
 <body>
 <div class="wrap">
-  <h1>💕 Watch Together <span class="small">v4</span></h1>
+  <h1>💕 Watch Together <span class="small">v5</span></h1>
 
   <div class="panel" id="connectPanel">
     <div class="bar">
@@ -104,11 +104,11 @@ function myName(){return ($('name').value||'Me').slice(0,16)}
 function status(t){$('status').textContent=t}
 
 /* ---------- transport (small relay via public MQTT brokers) ---------- */
-function send(o){
+function send(o,q){
   if(!room)return;
   o.id=myId;o.mid=myId+Math.random().toString(36).slice(2,8);
   var str=JSON.stringify(o);
-  clients.forEach(function(c){if(c.connected){try{c.publish('wtlove/'+room,str)}catch(e){}}});
+  clients.forEach(function(c){if(c.connected){try{c.publish('wtlove/'+room,str,{qos:q||0})}catch(e){}}});
 }
 function openTransport(){
   if(typeof mqtt==='undefined'){status('⚠️ The connection library did not load (adblock or network?). Try another browser or turn off adblock.');return}
@@ -221,19 +221,38 @@ function countdown(){
     else{
       clearInterval(t);c.textContent='▶';
       setTimeout(function(){c.style.display='none'},500);
-      applying=true;v.currentTime=0;
+      ign();v.currentTime=0;v.playbackRate=1;
       v.play().catch(function(){status('Tap play once so your browser allows playback.')});
-      setTimeout(function(){applying=false},500);
       me.ready=false;them.ready=false;updatePills();
     }
   },1000);
 }
 
 /* ---------- video sync ---------- */
-function state(){return {type:'sync',t:v.currentTime,p:!v.paused,at:Date.now()}}
-function push(){if(!applying)send(state())}
-['play','pause','seeked'].forEach(function(ev){v.addEventListener(ev,push)});
-setInterval(function(){if(!v.paused)send(state())},3000);
+var ignoreUntil=0,oneWay=0.15,rtts=[],mism=0;
+function ign(){ignoreUntil=Date.now()+700}
+function cmd(){if(Date.now()<ignoreUntil)return;send({type:'cmd',p:!v.paused,t:v.currentTime},1)}
+['play','pause','seeked'].forEach(function(ev){v.addEventListener(ev,cmd)});
+function applyCmd(d){
+  ign();
+  var t=d.t+(d.p?oneWay:0);
+  if(Math.abs(v.currentTime-t)>(d.p?0.25:0.05))v.currentTime=t;
+  if(d.p){v.playbackRate=1;if(v.paused)v.play().catch(function(){status('Tap play once so your browser allows sync.')})}
+  else{v.playbackRate=1;if(!v.paused)v.pause()}
+}
+function onHb(d){
+  var gp=!v.paused;
+  if(d.p&&gp){
+    mism=0;
+    var diff=v.currentTime-(d.t+oneWay);
+    if(Math.abs(diff)>0.7){ign();v.currentTime=d.t+oneWay+0.1;v.playbackRate=1}
+    else if(Math.abs(diff)>0.08){v.playbackRate=1-Math.max(-0.08,Math.min(0.08,diff*0.5))}
+    else v.playbackRate=1;
+  }else if(d.p!==gp){if(++mism>=2){mism=0;applyCmd({p:d.p,t:d.t})}}
+  else mism=0;
+}
+setInterval(function(){if(isHost&&partner)send({type:'hb',t:v.currentTime,p:!v.paused})},2000);
+setInterval(function(){if(partner)send({type:'rt',ts:performance.now()})},2000);
 $('fs').onclick=function(){
   var st=$('stage');
   if(document.fullscreenElement)document.exitFullscreen();
@@ -259,14 +278,12 @@ function onData(d){
   else if(d.type==='go'){countdown()}
   else if(d.type==='chat'){showComment(String(d.who||'?').slice(0,16),String(d.text||'').slice(0,120))}
   else if(d.type==='sticker'){if(STK.indexOf(d.s)>-1)showSticker(String(d.who||'?').slice(0,16),d.s)}
-  else if(d.type==='sync'&&typeof d.t==='number'){
-    applying=true;
-    var lat=d.p?Math.min(2,Math.max(0,(Date.now()-d.at)/1000)):0;
-    var target=d.t+lat;
-    if(Math.abs(v.currentTime-target)>1.2)v.currentTime=target;
-    if(d.p&&v.paused)v.play().catch(function(){status('Tap play once so your browser allows sync.')});
-    if(!d.p&&!v.paused)v.pause();
-    setTimeout(function(){applying=false},500);
+  else if(d.type==='cmd'&&typeof d.t==='number'){applyCmd(d)}
+  else if(d.type==='hb'&&typeof d.t==='number'){if(!isHost)onHb(d)}
+  else if(d.type==='rt'){send({type:'rtr',ts:d.ts})}
+  else if(d.type==='rtr'&&typeof d.ts==='number'){
+    rtts.push(performance.now()-d.ts);if(rtts.length>7)rtts.shift();
+    oneWay=Math.min(1.5,Math.max(0.02,Math.min.apply(null,rtts)/2000));
   }
 }
 updatePills();
