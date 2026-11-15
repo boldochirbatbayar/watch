@@ -5,94 +5,164 @@
 <title>Watch Together</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-:root{--bg:#fdf6f8;--card:#fff;--text:#2a1f2d;--muted:#85748a;--accent:#e0457b;--line:#f0dbe3;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#1a1320;--card:#271c2f;--text:#f5eaf3;--muted:#a995b0;--line:#3a2b45;color-scheme:dark}}
+:root{--bg1:#fff1f6;--bg2:#f1ecff;--card:#ffffffd9;--text:#2a1f2d;--muted:#7d6c83;--accent:#e0457b;--accent2:#a855f7;--line:#ecd9e6;--ok:#22a06b;--warn:#d97706;--inp:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg1:#1b1022;--bg2:#12162b;--card:#2a1d34cc;--text:#f6ecf5;--muted:#b09bb9;--line:#443052;--inp:#1e1428;color-scheme:dark}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:12px}
-.wrap{max-width:960px;margin:0 auto}
-h1{font-size:20px;margin:4px 0 10px}
-#stage{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:16/9;width:100%}
-#stage:fullscreen{border-radius:0;aspect-ratio:auto}
+html,body{margin:0}
+body{min-height:100vh;background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.app{max-width:980px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;margin:4px 2px 12px}
+.logo{font-weight:800;font-size:19px;flex:1}
+.chip{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{border-color:var(--ok);color:var(--ok)}
+.ver{font-size:11px;color:var(--muted)}
+.card{background:var(--card);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 8px 30px #a855f71a}
+.hero{max-width:460px;margin:7vh auto 0;text-align:center}
+.hero h2{margin:0 0 6px;font-size:26px}
+.hero p{margin:0 0 18px;color:var(--muted)}
+label.f{display:block;text-align:left;font-size:13px;color:var(--muted);margin-bottom:14px}
+input[type=text]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--inp);color:var(--text);font:inherit;margin-top:5px}
+input[type=text]:focus{outline:2px solid var(--accent2);outline-offset:1px}
+button,.btn{font:inherit;border:0;border-radius:12px;padding:11px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .08s,opacity .2s}
+button:active,.btn:active{transform:scale(.97)}
+button.big{width:100%;padding:15px;font-size:17px}
+button.ghost,.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button.ok{background:var(--ok)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.or{margin:16px 0 10px;color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px}
+.row input{margin:0}
+.hint{font-size:13px;color:var(--muted);margin-top:10px;min-height:18px}
+.invite{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.invite .code{font-size:24px;font-weight:800;letter-spacing:4px}
+.invite .grow{flex:1;min-width:140px}
+.invite small{display:block;color:var(--muted);font-size:12px}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.steps li:last-child{border-bottom:0}
+.dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:none;color:var(--muted)}
+.steps li.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.steps .t{flex:1;min-width:0}
+.steps b{display:block}
+.steps small{color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis}
+.steps small.warn{color:var(--warn)}
+.file input{display:none}
+details{margin-top:8px;font-size:12px;color:var(--muted)}
+summary{cursor:pointer}
+#stage{position:relative;background:#000;border-radius:18px;overflow:hidden;aspect-ratio:16/9;width:100%;margin-top:12px;box-shadow:0 10px 40px #0004}
+#stage:fullscreen{border-radius:0;margin:0;aspect-ratio:auto}
 video{width:100%;height:100%;display:block;background:#000}
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:#ffffffb0;text-align:center;padding:20px;pointer-events:none;font-size:15px}
+#empty span{font-size:42px}
 #fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(60px,18vw,160px);font-weight:800;color:#fff;text-shadow:0 4px 20px #000;background:#0006}
+#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(60px,18vw,160px);font-weight:800;color:#fff;text-shadow:0 4px 20px #000;background:#0006;pointer-events:none}
 .fly{position:absolute;left:100%;white-space:nowrap;color:#fff;font-weight:700;font-size:clamp(14px,2.6vw,28px);text-shadow:0 2px 6px #000,0 0 3px #000;animation:fly 9s linear forwards}
 .fly small{opacity:.85;font-weight:600;margin-right:6px;color:#ffc2d9}
 @keyframes fly{to{transform:translateX(calc(-100vw - 100%))}}
 .stk{position:absolute;font-size:clamp(48px,11vw,110px);animation:pop 3s ease-out forwards;filter:drop-shadow(0 4px 8px #0008);text-align:center}
 .stk i{display:block;font-style:normal;font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000}
 @keyframes pop{0%{transform:scale(.2) rotate(-15deg);opacity:0}15%{transform:scale(1.2) rotate(6deg);opacity:1}30%{transform:scale(1)}85%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
-.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
-.bar:first-child{margin-top:0}
-button,input{font:inherit}
-button,.file{border:0;border-radius:10px;padding:9px 13px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;display:inline-block}
-button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
-button:disabled{opacity:.45;cursor:default}
-button.on{background:#2fa563}
-input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
-.file input{display:none}
-.stickers{display:flex;gap:4px;flex-wrap:wrap}
-.stickers button{background:var(--bg);border:1px solid var(--line);font-size:24px;padding:4px 8px}
-.small{font-size:13px;color:var(--muted)}
-.code{font-size:22px;font-weight:800;letter-spacing:3px}
-.hide{display:none!important}
-.pill{font-size:13px;padding:3px 9px;border-radius:99px;background:var(--bg);border:1px solid var(--line)}
+.sbar{display:none;position:absolute;top:0;left:0;right:0;padding:10px;gap:8px;flex-wrap:wrap;background:linear-gradient(#000a,#0000);opacity:0;transition:opacity .25s}
+#stage:fullscreen .sbar{display:flex}
+#stage.ui .sbar{opacity:1}
+.sbar input{flex:1;min-width:120px;margin:0;background:#000a;color:#fff;border-color:#fff4}
+.dock{margin-top:12px;padding:12px}
+.dock .row{align-items:center}
+.dock .row input{flex:1}
+.ibtn{padding:11px 13px;background:var(--inp);color:var(--text);border:1px solid var(--line)}
+.tray{display:none;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tray.open{display:flex}
+.tray button{background:var(--inp);border:1px solid var(--line);font-size:26px;padding:6px 10px}
+.sbar .tray{width:100%;margin:0}
+.sbar .tray button{background:#0008;border-color:#fff3}
+.playing #setup{display:none}
+.hide,[hidden]{display:none!important}
+@media (max-width:520px){.hero{margin-top:3vh}.invite .code{font-size:20px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>💕 Watch Together <span class="small">v5</span></h1>
+<div class="app">
+  <header>
+    <div class="logo">💕 Watch Together</div>
+    <span class="chip" id="chip">Not connected</span>
+    <span class="ver">v6</span>
+  </header>
 
-  <div class="panel" id="connectPanel">
-    <div class="bar">
-      <input type="text" id="name" maxlength="16" placeholder="Your name">
+  <!-- Step 0: lobby -->
+  <section id="lobby" class="card hero">
+    <h2>Movie night, anywhere 🍿</h2>
+    <p>Watch the same video together, in sync, with live comments and stickers.</p>
+    <label class="f">Your name
+      <input type="text" id="name" maxlength="16" placeholder="e.g. Alex" autocomplete="off">
+    </label>
+    <div id="inviteBox" hidden>
+      <button class="big" id="joinInvite">💌 Join the room</button>
+      <div class="hint">You've been invited to room <b id="inviteCode"></b></div>
     </div>
-    <div class="bar" id="startRow">
-      <button id="create">Create a room</button>
-      <span class="small">or join:</span>
-      <input type="text" id="joinCode" maxlength="8" placeholder="Room code" style="max-width:130px;text-transform:uppercase">
-      <button class="ghost" id="join">Join</button>
+    <div id="createBox">
+      <button class="big" id="create">✨ Create a room</button>
+      <div class="or">or join with a code</div>
+      <div class="row">
+        <input type="text" id="joinCode" maxlength="8" placeholder="Room code" autocomplete="off" style="text-transform:uppercase">
+        <button class="ghost" id="join">Join</button>
+      </div>
     </div>
-    <div class="bar hide" id="roomRow">
-      <span class="small">Room code:</span><span class="code" id="roomCode"></span>
-      <button class="ghost" id="copy">Copy invite link</button>
-    </div>
-    <div class="small" id="relays" style="margin-top:8px"></div>
-    <div class="small" id="status" style="margin-top:4px">Create a room and send her the link.</div>
-  </div>
+    <div class="hint" id="lobbyMsg"></div>
+  </section>
 
-  <div id="stage" style="margin-top:10px">
-    <video id="v" playsinline controls></video>
-    <div id="fx"></div>
-    <div id="count"></div>
-  </div>
+  <!-- Room -->
+  <section id="room" hidden>
+    <div id="setup" class="card">
+      <div class="invite">
+        <div class="grow"><small>Room code</small><span class="code" id="roomCode"></span></div>
+        <button class="ghost" id="copy">🔗 Copy invite link</button>
+      </div>
+      <ol class="steps">
+        <li id="st1"><div class="dot">1</div><div class="t"><b>Connect</b><small id="st1t"></small></div></li>
+        <li id="st2"><div class="dot">2</div><div class="t"><b>Choose the video</b><small id="st2t"></small></div>
+          <label class="btn ghost">📁 Choose file<input id="file" type="file" accept="video/*"></label></li>
+        <li id="st3"><div class="dot">3</div><div class="t"><b>Ready? Start together</b><small id="st3t"></small></div>
+          <button id="ready" disabled>I'm ready</button></li>
+      </ol>
+      <div class="hint" id="status"></div>
+      <details><summary>Connection details</summary><div id="relays" style="margin-top:6px"></div></details>
+    </div>
 
-  <div class="panel">
-    <div class="bar">
-      <label class="file">🎬 Pick your video<input id="file" type="file" accept="video/*"></label>
-      <button id="ready" disabled>✅ I'm ready</button>
-      <button class="ghost" id="fs">⛶ Fullscreen</button>
-      <span class="pill" id="you">You: no video</span>
-      <span class="pill" id="them">Them: not connected</span>
+    <div id="stage">
+      <video id="v" playsinline controls></video>
+      <div id="empty"><span>🎬</span>Choose a video to begin.<br>You both need the same file.</div>
+      <div id="fx"></div>
+      <div id="count"></div>
+      <div class="sbar">
+        <input type="text" id="smsg" maxlength="120" placeholder="Comment…">
+        <button id="ssend">Send</button>
+        <button class="ibtn" id="sstk">😊</button>
+        <button class="ibtn" id="sexit">✕</button>
+        <div class="tray" id="strayRow"></div>
+      </div>
     </div>
-    <div class="small" style="margin-top:6px">Both of you pick the same video file, then both press ready. A 3-2-1 countdown starts it on both screens. After that, play/pause/seek stay in sync.</div>
-    <div class="bar">
-      <input type="text" id="msg" maxlength="120" placeholder="Type a comment, press Enter…">
-      <button id="send">Send</button>
+
+    <div class="card dock">
+      <div class="row">
+        <input type="text" id="msg" maxlength="120" placeholder="Type a comment and press Enter…" autocomplete="off">
+        <button id="send">Send</button>
+        <button class="ibtn" id="stk" title="Stickers">😊</button>
+        <button class="ibtn" id="fs" title="Fullscreen (comments stay visible)">⛶</button>
+        <button class="ibtn" id="setupBtn" title="Show or hide setup">⚙️</button>
+      </div>
+      <div class="tray" id="trayRow"></div>
     </div>
-    <div class="bar stickers" id="stickers"></div>
-  </div>
+  </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
 <script>
 (function(){
 var $=function(i){return document.getElementById(i)};
-var v=$('v'),fx=$('fx');
+var v=$('v'),fx=$('fx'),stage=$('stage');
 var isHost=false,room=null,partner=false,lastSeen=0,applying=false;
 var myId=Math.random().toString(36).slice(2,10),seen={},clients=[];
-var me={ready:false,file:null},them={ready:false,file:null,name:'Them'};
+var me={ready:false,file:null},them={ready:false,file:null,name:'Your partner'};
 var STK=['❤️','😂','😍','😭','🔥','👏','😱','🥺','💋','🎉','🍿','👀'];
 var BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081','wss://mqtt.eclipseprojects.io/mqtt'];
 var RN=['emqx','hivemq','mosquitto','eclipse'],RS=['…','…','…','…'];
@@ -100,7 +170,7 @@ function relayInfo(){var e=$('relays');if(e)e.textContent='Relays: '+RN.map(func
 
 try{var n=localStorage.getItem('wt_name');if(n)$('name').value=n}catch(e){}
 $('name').addEventListener('change',function(){try{localStorage.setItem('wt_name',$('name').value)}catch(e){}});
-function myName(){return ($('name').value||'Me').slice(0,16)}
+function myName(){return ($('name').value||'Me').trim().slice(0,16)||'Me'}
 function status(t){$('status').textContent=t}
 
 /* ---------- transport (small relay via public MQTT brokers) ---------- */
@@ -118,7 +188,7 @@ function openTransport(){
     c.on('connect',function(){
       RS[bi]='✅';relayInfo();
       c.subscribe('wtlove/'+room,function(){send({type:'hello',name:myName(),reply:false})});
-      status(partner?'💞 Connected!':(isHost?'Room is open. Waiting for her to join…':'Joined. Looking for the host…'));
+      status(partner?'💞 Connected!':(isHost?'Room is open. Waiting for your partner to join…':'Joined. Looking for the host…'));
       send({type:'hello',name:myName(),reply:false});
     });
     c.on('message',function(t,buf){
@@ -142,6 +212,7 @@ function openTransport(){
   },5000);
 }
 
+
 /* ---------- overlay ---------- */
 function showComment(who,text){
   var d=document.createElement('div');d.className='fly';
@@ -157,47 +228,78 @@ function showSticker(who,emoji){
   d.style.left=(8+Math.random()*75)+'%';d.style.top=(15+Math.random()*50)+'%';
   fx.appendChild(d);setTimeout(function(){d.remove()},3100);
 }
-function sendMsg(){
-  var t=$('msg').value.trim();if(!t)return;
-  $('msg').value='';
+function sendText(inp){
+  var t=inp.value.trim();if(!t)return;
+  inp.value='';
   showComment(myName(),t);
   send({type:'chat',who:myName(),text:t.slice(0,120)});
 }
-$('send').onclick=sendMsg;
-$('msg').addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg()});
-STK.forEach(function(s){
-  var b=document.createElement('button');b.textContent=s;
-  b.onclick=function(){showSticker(myName(),s);send({type:'sticker',who:myName(),s:s})};
-  $('stickers').appendChild(b);
-});
+$('send').onclick=function(){sendText($('msg'))};
+$('msg').addEventListener('keydown',function(e){if(e.key==='Enter')sendText($('msg'))});
+$('ssend').onclick=function(){sendText($('smsg'))};
+$('smsg').addEventListener('keydown',function(e){if(e.key==='Enter')sendText($('smsg'))});
+function buildTray(el){
+  STK.forEach(function(s){
+    var b=document.createElement('button');b.textContent=s;
+    b.onclick=function(){showSticker(myName(),s);send({type:'sticker',who:myName(),s:s})};
+    el.appendChild(b);
+  });
+}
+buildTray($('trayRow'));buildTray($('strayRow'));
+$('stk').onclick=function(){$('trayRow').classList.toggle('open')};
+$('sstk').onclick=function(){$('strayRow').classList.toggle('open')};
+$('setupBtn').onclick=function(){document.body.classList.toggle('playing')};
 
-/* ---------- room ---------- */
+/* ---------- lobby / room ---------- */
 function code(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<7;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function needName(){
+  var el=$('name');
+  if(!el.value.trim()){$('lobbyMsg').textContent='Please type your name first 💗';el.focus();return true}
+  try{localStorage.setItem('wt_name',el.value)}catch(e){}
+  return false;
+}
 function enter(c,host){
   room=c;isHost=host;
-  $('startRow').classList.add('hide');$('roomRow').classList.remove('hide');$('roomCode').textContent=c;
-  status('Connecting to relay…');openTransport();
+  $('lobby').hidden=true;$('room').hidden=false;$('roomCode').textContent=c;
+  status('Connecting…');updatePills();openTransport();
 }
-$('create').onclick=function(){enter(code(),true)};
-$('join').onclick=function(){var c=$('joinCode').value.trim().toUpperCase();if(c)enter(c,false)};
+$('create').onclick=function(){if(!needName())enter(code(),true)};
+$('join').onclick=function(){var c=$('joinCode').value.trim().toUpperCase();if(!c){$('lobbyMsg').textContent='Enter the room code first.';return}if(!needName())enter(c,false)};
+$('joinInvite').onclick=function(){if(!needName())enter($('inviteCode').textContent,false)};
 $('copy').onclick=function(){
   var url=location.origin+location.pathname+'?room='+room;
-  if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){status('Invite link copied!')},function(){status(url)});
-  else status(url);
+  var b=$('copy');
+  function done(t){b.textContent=t;setTimeout(function(){b.textContent='🔗 Copy invite link'},2000)}
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){done('✅ Copied!')},function(){done('Press and hold to copy');status(url)});
+  else{status(url);done('Link shown below')}
 };
-(function(){var m=location.search.match(/[?&]room=([A-Za-z0-9]+)/);if(m){$('joinCode').value=m[1];status('Enter your name, then press Join.')}})();
+(function(){
+  var m=location.search.match(/[?&]room=([A-Za-z0-9]+)/);
+  if(m){$('inviteCode').textContent=m[1].toUpperCase();$('inviteBox').hidden=false;$('createBox').hidden=true}
+})();
 
-/* ---------- ready / countdown ---------- */
+/* ---------- checklist UI ---------- */
 function updatePills(){
-  $('you').textContent='You: '+(me.file?(me.ready?'ready ✅':'video loaded'):'no video');
-  $('them').textContent=(them.name||'Them')+': '+(partner?(them.ready?'ready ✅':(them.file?'video loaded':'no video')):'not connected');
-  $('ready').textContent=me.ready?'✅ Ready (tap to undo)':"✅ I'm ready";
-  $('ready').className=me.ready?'on':'';
-  $('ready').disabled=!me.file;
+  var both=me.ready&&them.ready;
+  $('st1').className=partner?'done':'';
+  $('st1t').textContent=partner?'💞 '+them.name+' is here':(isHost?'Send your partner the invite link and wait for them to join…':'Looking for the host…');
+  $('st2').className=me.file?'done':'';
+  var mism=me.file&&them.file&&me.file.size!==them.file.size;
+  var s2=(me.file?'You: '+me.file.name:'You: no video yet')+' · '+(partner?(them.file?them.name+': video loaded':them.name+': no video yet'):'…');
+  if(mism)s2='⚠️ Your files look different — you both need the exact same file. '+s2;
+  var t2=$('st2t');t2.textContent=s2;t2.className=mism?'warn':'';
+  $('st3').className=both?'done':'';
+  $('ready').disabled=!(me.file&&partner);
+  $('ready').textContent=me.ready?'✅ Ready (undo)':"I'm ready";
+  $('ready').className=me.ready?'ok':'';
+  $('st3t').textContent=!partner?'Waiting for connection':!me.file?'Choose your video first':me.ready?(them.ready?'Starting…':'Waiting for '+them.name+'…'):'Press ready when you are';
+  var chip=$('chip');
+  chip.textContent=!room?'Not connected':partner?'💞 Connected':'Waiting for partner…';
+  chip.className='chip'+(partner?' ok':'');
 }
 $('file').addEventListener('change',function(e){
   var f=e.target.files[0];if(!f)return;
-  v.src=URL.createObjectURL(f);
+  v.src=URL.createObjectURL(f);$('empty').hidden=true;
   me.file={name:f.name,size:f.size};me.ready=false;
   updatePills();send({type:'ready',ready:false,file:me.file});
 });
@@ -209,8 +311,7 @@ $('ready').onclick=function(){
 };
 function checkGo(){
   if(isHost&&partner&&me.ready&&them.ready){
-    if(me.file&&them.file&&me.file.size!==them.file.size)status('⚠️ Your files look different ('+me.file.name+' vs '+them.file.name+'). Sync may be off.');
-    send({type:'go'});countdown();
+    send({type:'go'},1);countdown();
   }
 }
 function countdown(){
@@ -224,9 +325,22 @@ function countdown(){
       ign();v.currentTime=0;v.playbackRate=1;
       v.play().catch(function(){status('Tap play once so your browser allows playback.')});
       me.ready=false;them.ready=false;updatePills();
+      document.body.classList.add('playing');
     }
   },1000);
 }
+
+/* ---------- fullscreen with comment bar ---------- */
+$('fs').onclick=function(){
+  if(document.fullscreenElement)document.exitFullscreen();
+  else if(stage.requestFullscreen)stage.requestFullscreen();
+  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
+};
+$('sexit').onclick=function(){if(document.fullscreenElement)document.exitFullscreen()};
+var uiT=null;
+function poke(){stage.classList.add('ui');clearTimeout(uiT);uiT=setTimeout(function(){if(document.activeElement!==$('smsg'))stage.classList.remove('ui')},3500)}
+['mousemove','touchstart','click'].forEach(function(ev){stage.addEventListener(ev,poke)});
+$('smsg').addEventListener('focus',function(){stage.classList.add('ui')});
 
 /* ---------- video sync ---------- */
 var ignoreUntil=0,oneWay=0.15,rtts=[],mism=0;
@@ -253,13 +367,6 @@ function onHb(d){
 }
 setInterval(function(){if(isHost&&partner)send({type:'hb',t:v.currentTime,p:!v.paused})},2000);
 setInterval(function(){if(partner)send({type:'rt',ts:performance.now()})},2000);
-$('fs').onclick=function(){
-  var st=$('stage');
-  if(document.fullscreenElement)document.exitFullscreen();
-  else if(st.requestFullscreen)st.requestFullscreen();
-  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
-};
-
 /* ---------- incoming ---------- */
 function onData(d){
   if(d.type==='hello'){
@@ -286,7 +393,8 @@ function onData(d){
     oneWay=Math.min(1.5,Math.max(0.02,Math.min.apply(null,rtts)/2000));
   }
 }
-updatePills();
+
+updatePills();relayInfo();
 })();
 </script>
 </body>
