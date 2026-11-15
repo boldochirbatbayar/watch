@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{min-height:100vh;background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
-.app{max-width:980px;margin:0 auto}
+.app{max-width:1100px;margin:0 auto}
 header{display:flex;align-items:center;gap:10px;margin:4px 2px 12px}
 .logo{font-weight:800;font-size:19px;flex:1}
 .chip{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);white-space:nowrap}
@@ -49,8 +49,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .file input{display:none}
 details{margin-top:8px;font-size:12px;color:var(--muted)}
 summary{cursor:pointer}
-#stage{position:relative;background:#000;border-radius:18px;overflow:hidden;aspect-ratio:16/9;width:100%;margin-top:12px;box-shadow:0 10px 40px #0004}
-#stage:fullscreen{border-radius:0;margin:0;aspect-ratio:auto}
 video{width:100%;height:100%;display:block;background:#000}
 #empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:#ffffffb0;text-align:center;padding:20px;pointer-events:none;font-size:15px}
 #empty span{font-size:42px}
@@ -62,10 +60,20 @@ video{width:100%;height:100%;display:block;background:#000}
 .stk{position:absolute;font-size:clamp(48px,11vw,110px);animation:pop 3s ease-out forwards;filter:drop-shadow(0 4px 8px #0008);text-align:center}
 .stk i{display:block;font-style:normal;font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000}
 @keyframes pop{0%{transform:scale(.2) rotate(-15deg);opacity:0}15%{transform:scale(1.2) rotate(6deg);opacity:1}30%{transform:scale(1)}85%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
-.sbar{display:none;position:absolute;top:0;left:0;right:0;padding:10px;gap:8px;flex-wrap:wrap;background:linear-gradient(#000a,#0000);opacity:0;transition:opacity .25s}
-#stage:fullscreen .sbar{display:flex}
-#stage.ui .sbar{opacity:1}
-.sbar input{flex:1;min-width:120px;margin:0;background:#000a;color:#fff;border-color:#fff4}
+#stage{position:relative;background:#000;border-radius:18px;overflow:hidden;aspect-ratio:16/9;width:min(100%,max(420px,calc((100vh - 200px) * 16 / 9)));margin:12px auto 0;box-shadow:0 10px 40px #0004}
+@supports (height:100dvh){#stage{width:min(100%,max(420px,calc((100dvh - 200px) * 16 / 9)))}}
+#stage.pfs{position:fixed;inset:0;z-index:100}
+#stage.fsx{width:100%;height:100%;max-width:none;aspect-ratio:auto;border-radius:0;margin:0;box-shadow:none}
+.sbar{display:none;position:absolute;top:0;left:0;right:0;padding:max(10px,env(safe-area-inset-top)) 10px 10px;gap:8px;flex-direction:row-reverse;align-items:flex-start;pointer-events:none;z-index:5}
+.sbar>*{pointer-events:auto}
+#stage.fsx .sbar{display:flex}
+.sbar .fab{background:#000a;border:1px solid #fff4;color:#fff;font-size:20px;padding:10px 13px;border-radius:99px}
+.sbody{display:none;flex:1;flex-wrap:wrap;gap:8px;background:#000c;padding:10px;border-radius:16px;max-width:560px}
+#stage.open .sbody{display:flex}
+.sbody input{flex:1;min-width:120px;margin:0;background:#000a;color:#fff;border-color:#fff4}
+.sbody .ibtn{background:#fff1;color:#fff;border-color:#fff3}
+.sbody .tray{display:flex;flex-wrap:nowrap;overflow-x:auto;width:100%;margin:0;gap:6px}
+.sbody .tray button{background:#fff1;border:1px solid #fff3;font-size:24px;padding:4px 9px;flex:none}
 .dock{margin-top:12px;padding:12px}
 .dock .row{align-items:center}
 .dock .row input{flex:1}
@@ -73,8 +81,6 @@ video{width:100%;height:100%;display:block;background:#000}
 .tray{display:none;flex-wrap:wrap;gap:6px;margin-top:10px}
 .tray.open{display:flex}
 .tray button{background:var(--inp);border:1px solid var(--line);font-size:26px;padding:6px 10px}
-.sbar .tray{width:100%;margin:0}
-.sbar .tray button{background:#0008;border-color:#fff3}
 .playing #setup{display:none}
 .hide,[hidden]{display:none!important}
 @media (max-width:520px){.hero{margin-top:3vh}.invite .code{font-size:20px}}
@@ -85,7 +91,7 @@ video{width:100%;height:100%;display:block;background:#000}
   <header>
     <div class="logo">💕 Watch Together</div>
     <span class="chip" id="chip">Not connected</span>
-    <span class="ver">v6</span>
+    <span class="ver">v7</span>
   </header>
 
   <!-- Step 0: lobby -->
@@ -134,11 +140,13 @@ video{width:100%;height:100%;display:block;background:#000}
       <div id="fx"></div>
       <div id="count"></div>
       <div class="sbar">
-        <input type="text" id="smsg" maxlength="120" placeholder="Comment…">
-        <button id="ssend">Send</button>
-        <button class="ibtn" id="sstk">😊</button>
-        <button class="ibtn" id="sexit">✕</button>
-        <div class="tray" id="strayRow"></div>
+        <button class="fab" id="sfab" title="Comments and stickers">💬</button>
+        <div class="sbody">
+          <input type="text" id="smsg" maxlength="120" placeholder="Comment…" autocomplete="off">
+          <button id="ssend">Send</button>
+          <button class="ibtn" id="sexit">✕ Exit</button>
+          <div class="tray" id="strayRow"></div>
+        </div>
       </div>
     </div>
 
@@ -247,7 +255,6 @@ function buildTray(el){
 }
 buildTray($('trayRow'));buildTray($('strayRow'));
 $('stk').onclick=function(){$('trayRow').classList.toggle('open')};
-$('sstk').onclick=function(){$('strayRow').classList.toggle('open')};
 $('setupBtn').onclick=function(){document.body.classList.toggle('playing')};
 
 /* ---------- lobby / room ---------- */
@@ -286,8 +293,9 @@ function updatePills(){
   $('st2').className=me.file?'done':'';
   var mism=me.file&&them.file&&me.file.size!==them.file.size;
   var s2=(me.file?'You: '+me.file.name:'You: no video yet')+' · '+(partner?(them.file?them.name+': video loaded':them.name+': no video yet'):'…');
+  if(vErr)s2='❌ '+vErr;
   if(mism)s2='⚠️ Your files look different — you both need the exact same file. '+s2;
-  var t2=$('st2t');t2.textContent=s2;t2.className=mism?'warn':'';
+  var t2=$('st2t');t2.textContent=s2;t2.className=(mism||vErr)?'warn':'';
   $('st3').className=both?'done':'';
   $('ready').disabled=!(me.file&&partner);
   $('ready').textContent=me.ready?'✅ Ready (undo)':"I'm ready";
@@ -297,15 +305,9 @@ function updatePills(){
   chip.textContent=!room?'Not connected':partner?'💞 Connected':'Waiting for partner…';
   chip.className='chip'+(partner?' ok':'');
 }
-$('file').addEventListener('change',function(e){
-  var f=e.target.files[0];if(!f)return;
-  v.src=URL.createObjectURL(f);$('empty').hidden=true;
-  me.file={name:f.name,size:f.size};me.ready=false;
-  updatePills();send({type:'ready',ready:false,file:me.file});
-});
 $('ready').onclick=function(){
   me.ready=!me.ready;
-  if(me.ready){v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})}
+  if(me.ready){ignoreUntil=Date.now()+2500;v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})}
   updatePills();send({type:'ready',ready:me.ready,file:me.file});
   checkGo();
 };
@@ -330,17 +332,65 @@ function countdown(){
   },1000);
 }
 
-/* ---------- fullscreen with comment bar ---------- */
-$('fs').onclick=function(){
-  if(document.fullscreenElement)document.exitFullscreen();
-  else if(stage.requestFullscreen)stage.requestFullscreen();
-  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
-};
-$('sexit').onclick=function(){if(document.fullscreenElement)document.exitFullscreen()};
-var uiT=null;
-function poke(){stage.classList.add('ui');clearTimeout(uiT);uiT=setTimeout(function(){if(document.activeElement!==$('smsg'))stage.classList.remove('ui')},3500)}
-['mousemove','touchstart','click'].forEach(function(ev){stage.addEventListener(ev,poke)});
-$('smsg').addEventListener('focus',function(){stage.classList.add('ui')});
+/* ---------- fullscreen (real, or fake on iPhone) ---------- */
+var openT=null;
+function inFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement)||stage.classList.contains('pfs')}
+function syncFs(){
+  var on=inFs();
+  stage.classList.toggle('fsx',on);
+  if(!on){stage.classList.remove('open','pfs');document.body.style.overflow=''}
+}
+function setBar(open){
+  stage.classList.toggle('open',open);clearTimeout(openT);
+  if(open)openT=setTimeout(function(){if(document.activeElement!==$('smsg'))stage.classList.remove('open')},10000);
+}
+function enterFs(){
+  function fake(){stage.classList.add('pfs');document.body.style.overflow='hidden';syncFs()}
+  if(stage.requestFullscreen){stage.requestFullscreen().then(syncFs,fake)}
+  else if(stage.webkitRequestFullscreen){stage.webkitRequestFullscreen();setTimeout(syncFs,300)}
+  else fake();
+}
+function exitFs(){
+  stage.classList.remove('pfs','open');
+  if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();
+  else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+  syncFs();
+}
+$('fs').onclick=function(){inFs()?exitFs():enterFs()};
+$('sexit').onclick=exitFs;
+$('sfab').onclick=function(){setBar(!stage.classList.contains('open'))};
+document.addEventListener('fullscreenchange',syncFs);
+document.addEventListener('webkitfullscreenchange',syncFs);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&stage.classList.contains('pfs'))exitFs()});
+['click','touchstart','keydown'].forEach(function(ev){document.querySelector('.sbody').addEventListener(ev,function(){if(stage.classList.contains('open'))setBar(true)})});
+
+/* ---------- video loading ---------- */
+var vErr='',pending=null;
+function fmt(t){t=Math.round(t||0);var h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return (h?h+':'+(m<10?'0':''):'')+m+':'+(s<10?'0':'')+s}
+function fail(msg){
+  me.file=null;me.ready=false;vErr=msg;pending=null;
+  var em=$('empty');em.hidden=false;em.innerHTML='<span>😕</span>This file can’t be played here';
+  updatePills();send({type:'ready',ready:false,file:null});
+}
+var FMT_MSG='Your browser can’t play this file. Chrome often can’t open .mkv, .avi or H.265 (HEVC) videos. Convert it to MP4 (H.264) with HandBrake or cloudconvert.com, then choose it again.';
+v.addEventListener('loadedmetadata',function(){
+  if(!pending)return;
+  if(v.videoWidth===0){fail('The sound loads but the picture can’t be decoded (usually H.265/HEVC). Convert it to MP4 (H.264) with HandBrake or cloudconvert.com.');return}
+  me.file={name:pending.name+' ('+fmt(v.duration)+')',size:pending.size};
+  me.fileName=pending.name;vErr='';pending=null;
+  $('empty').hidden=true;updatePills();send({type:'ready',ready:false,file:me.file});
+});
+v.addEventListener('error',function(){if(pending||v.dataset.url){fail(FMT_MSG)}});
+$('file').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  if(v.dataset.url){try{URL.revokeObjectURL(v.dataset.url)}catch(x){}}
+  me.file=null;me.ready=false;vErr='';pending=f;
+  var em=$('empty');em.hidden=false;em.innerHTML='<span>⏳</span>Loading video…';
+  var u=URL.createObjectURL(f);v.dataset.url=u;v.preload='auto';v.src=u;v.load();
+  updatePills();send({type:'ready',ready:false,file:null});
+  e.target.value='';
+});
+setTimeout(function(){},0);
 
 /* ---------- video sync ---------- */
 var ignoreUntil=0,oneWay=0.15,rtts=[],mism=0;
