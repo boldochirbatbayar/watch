@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Watch Together</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#fdf6f8;--card:#fff;--text:#2a1f2d;--muted:#85748a;--accent:#e0457b;--line:#f0dbe3;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1320;--card:#271c2f;--text:#f5eaf3;--muted:#a995b0;--line:#3a2b45;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:12px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 10px}
+#stage{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:16/9;width:100%}
+#stage:fullscreen{border-radius:0;aspect-ratio:auto}
+video{width:100%;height:100%;display:block;background:#000}
+#fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(60px,18vw,160px);font-weight:800;color:#fff;text-shadow:0 4px 20px #000;background:#0006}
+.fly{position:absolute;left:100%;white-space:nowrap;color:#fff;font-weight:700;font-size:clamp(14px,2.6vw,28px);text-shadow:0 2px 6px #000,0 0 3px #000;animation:fly 9s linear forwards}
+.fly small{opacity:.85;font-weight:600;margin-right:6px;color:#ffc2d9}
+@keyframes fly{to{transform:translateX(calc(-100vw - 100%))}}
+.stk{position:absolute;font-size:clamp(48px,11vw,110px);animation:pop 3s ease-out forwards;filter:drop-shadow(0 4px 8px #0008);text-align:center}
+.stk i{display:block;font-style:normal;font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000}
+@keyframes pop{0%{transform:scale(.2) rotate(-15deg);opacity:0}15%{transform:scale(1.2) rotate(6deg);opacity:1}30%{transform:scale(1)}85%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.bar:first-child{margin-top:0}
+button,input{font:inherit}
+button,.file{border:0;border-radius:10px;padding:9px 13px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;display:inline-block}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:default}
+button.on{background:#2fa563}
+input[type=text]{flex:1;min-width:110px;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.file input{display:none}
+.stickers{display:flex;gap:4px;flex-wrap:wrap}
+.stickers button{background:var(--bg);border:1px solid var(--line);font-size:24px;padding:4px 8px}
+.small{font-size:13px;color:var(--muted)}
+.code{font-size:22px;font-weight:800;letter-spacing:3px}
+.hide{display:none!important}
+.pill{font-size:13px;padding:3px 9px;border-radius:99px;background:var(--bg);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💕 Watch Together</h1>
+
+  <div class="panel" id="connectPanel">
+    <div class="bar">
+      <input type="text" id="name" maxlength="16" placeholder="Your name">
+    </div>
+    <div class="bar" id="startRow">
+      <button id="create">Create a room</button>
+      <span class="small">or join:</span>
+      <input type="text" id="joinCode" maxlength="8" placeholder="Room code" style="max-width:130px;text-transform:uppercase">
+      <button class="ghost" id="join">Join</button>
+    </div>
+    <div class="bar hide" id="roomRow">
+      <span class="small">Room code:</span><span class="code" id="roomCode"></span>
+      <button class="ghost" id="copy">Copy invite link</button>
+    </div>
+    <div class="small" id="status" style="margin-top:8px">Create a room, send her the link, and you're connected.</div>
+  </div>
+
+  <div id="stage" style="margin-top:10px">
+    <video id="v" playsinline controls></video>
+    <div id="fx"></div>
+    <div id="count"></div>
+  </div>
+
+  <div class="panel">
+    <div class="bar">
+      <label class="file">🎬 Pick your video<input id="file" type="file" accept="video/*"></label>
+      <button id="ready" disabled>✅ I'm ready</button>
+      <button class="ghost" id="fs">⛶ Fullscreen</button>
+      <span class="pill" id="you">You: no video</span>
+      <span class="pill" id="them">Them: not connected</span>
+    </div>
+    <div class="small" style="margin-top:6px">Both of you pick the same video file, then both press ready. A 3-2-1 countdown starts it on both screens. After that, play/pause/seek stay in sync.</div>
+    <div class="bar">
+      <input type="text" id="msg" maxlength="120" placeholder="Type a comment, press Enter…">
+      <button id="send">Send</button>
+    </div>
+    <div class="bar stickers" id="stickers"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var v=$('v'),fx=$('fx'),peer=null,conn=null,isHost=false,applying=false;
+var me={ready:false,file:null},them={ready:false,file:null,name:'Them'};
+var STK=['❤️','😂','😍','😭','🔥','👏','😱','🥺','💋','🎉','🍿','👀'];
+var PFX='wt-love-';
+
+try{var n=localStorage.getItem('wt_name');if(n)$('name').value=n}catch(e){}
+$('name').addEventListener('change',function(){try{localStorage.setItem('wt_name',$('name').value)}catch(e){}});
+function myName(){return ($('name').value||'Me').slice(0,16)}
+function status(t){$('status').textContent=t}
+function send(o){if(conn&&conn.open){try{conn.send(o)}catch(e){}}}
+
+/* ---------- overlay ---------- */
+function showComment(who,text){
+  var d=document.createElement('div');d.className='fly';
+  var s=document.createElement('small');s.textContent=who;
+  d.appendChild(s);d.appendChild(document.createTextNode(text));
+  d.style.top=(6+Math.random()*68)+'%';
+  fx.appendChild(d);setTimeout(function(){d.remove()},9500);
+}
+function showSticker(who,emoji){
+  var d=document.createElement('div');d.className='stk';
+  d.textContent=emoji;
+  var i=document.createElement('i');i.textContent=who;d.appendChild(i);
+  d.style.left=(8+Math.random()*75)+'%';d.style.top=(15+Math.random()*50)+'%';
+  fx.appendChild(d);setTimeout(function(){d.remove()},3100);
+}
+function sendMsg(){
+  var t=$('msg').value.trim();if(!t)return;
+  $('msg').value='';
+  showComment(myName(),t);
+  send({type:'chat',who:myName(),text:t.slice(0,120)});
+}
+$('send').onclick=sendMsg;
+$('msg').addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg()});
+STK.forEach(function(s){
+  var b=document.createElement('button');b.textContent=s;
+  b.onclick=function(){showSticker(myName(),s);send({type:'sticker',who:myName(),s:s})};
+  $('stickers').appendChild(b);
+});
+
+/* ---------- connection ---------- */
+function code(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<5;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function showRoom(c){
+  $('startRow').classList.add('hide');$('roomRow').classList.remove('hide');$('roomCode').textContent=c;
+}
+function createRoom(){
+  isHost=true;var c=code();
+  peer=new Peer(PFX+c);
+  peer.on('open',function(){showRoom(c);status('Waiting for her to join… send her the invite link.')});
+  peer.on('connection',function(cn){
+    if(conn&&conn.open){cn.close();return}
+    setConn(cn);
+  });
+  peer.on('error',function(e){
+    if(e.type==='unavailable-id'){peer.destroy();createRoom()}
+    else status('Connection problem: '+e.type+'. Refresh and try again.');
+  });
+}
+function joinRoom(c){
+  c=(c||'').trim().toUpperCase();if(!c)return;
+  isHost=false;peer=new Peer();
+  peer.on('open',function(){showRoom(c);status('Connecting…');setConn(peer.connect(PFX+c,{reliable:true}))});
+  peer.on('error',function(e){
+    status(e.type==='peer-unavailable'?'No room with that code. Check it or ask for a new link.':'Connection problem: '+e.type+'.');
+  });
+}
+function setConn(cn){
+  conn=cn;
+  cn.on('open',function(){
+    status('💞 Connected!');
+    them.name='Them';updatePills();
+    send({type:'hello',name:myName()});
+    send({type:'ready',ready:me.ready,file:me.file});
+  });
+  cn.on('data',onData);
+  cn.on('close',function(){
+    status('Connection lost. Refresh to reconnect.');
+    them={ready:false,file:null,name:'Them'};updatePills();
+  });
+}
+$('create').onclick=createRoom;
+$('join').onclick=function(){joinRoom($('joinCode').value)};
+$('copy').onclick=function(){
+  var url=location.origin+location.pathname+'?room='+$('roomCode').textContent;
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){status('Invite link copied!')},function(){status(url)});
+  else status(url);
+};
+(function(){var m=location.search.match(/[?&]room=([A-Za-z0-9]+)/);if(m){$('joinCode').value=m[1];status('Enter your name, then press Join.')}})();
+
+/* ---------- ready / countdown ---------- */
+function updatePills(){
+  $('you').textContent='You: '+(me.file?(me.ready?'ready ✅':'video loaded'):'no video');
+  $('them').textContent=(them.name||'Them')+': '+(conn&&conn.open?(them.ready?'ready ✅':(them.file?'video loaded':'no video')):'not connected');
+  $('ready').textContent=me.ready?'✅ Ready (tap to undo)':"✅ I'm ready";
+  $('ready').className=me.ready?'on':'';
+  $('ready').disabled=!me.file;
+}
+$('file').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  v.src=URL.createObjectURL(f);
+  me.file={name:f.name,size:f.size};me.ready=false;
+  updatePills();send({type:'ready',ready:false,file:me.file});
+});
+$('ready').onclick=function(){
+  me.ready=!me.ready;
+  if(me.ready){v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})} // unlock autoplay on phones
+  updatePills();send({type:'ready',ready:me.ready,file:me.file});
+  checkGo();
+};
+function filesMatch(){return me.file&&them.file&&me.file.size===them.file.size}
+function checkGo(){
+  if(isHost&&me.ready&&them.ready&&conn&&conn.open){
+    if(!filesMatch()){status('⚠️ Your files look different ('+me.file.name+' vs '+them.file.name+'). Sync may be off.')}
+    send({type:'go'});countdown();
+  }
+}
+function countdown(){
+  var n=3,c=$('count');c.style.display='flex';c.textContent=n;
+  var t=setInterval(function(){
+    n--;
+    if(n>0){c.textContent=n}
+    else{
+      clearInterval(t);c.textContent='▶';
+      setTimeout(function(){c.style.display='none'},500);
+      applying=true;v.currentTime=0;
+      v.play().catch(function(){status('Tap play once so your browser allows playback.')});
+      setTimeout(function(){applying=false},500);
+      me.ready=false;them.ready=false;updatePills();
+    }
+  },1000);
+}
+
+/* ---------- video sync ---------- */
+function state(){return {type:'sync',t:v.currentTime,p:!v.paused,at:Date.now()}}
+function push(){if(!applying)send(state())}
+['play','pause','seeked'].forEach(function(ev){v.addEventListener(ev,push)});
+setInterval(function(){if(!v.paused)send(state())},3000);
+$('fs').onclick=function(){
+  var st=$('stage');
+  if(document.fullscreenElement)document.exitFullscreen();
+  else if(st.requestFullscreen)st.requestFullscreen();
+  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
+};
+
+/* ---------- incoming ---------- */
+function onData(d){
+  if(!d||typeof d!=='object')return;
+  if(d.type==='hello'){them.name=String(d.name||'Them').slice(0,16);updatePills()}
+  else if(d.type==='ready'){
+    them.ready=!!d.ready;
+    them.file=(d.file&&typeof d.file.size==='number')?{name:String(d.file.name).slice(0,80),size:d.file.size}:null;
+    updatePills();checkGo();
+  }
+  else if(d.type==='go'){countdown()}
+  else if(d.type==='chat'){showComment(String(d.who||'?').slice(0,16),String(d.text||'').slice(0,120))}
+  else if(d.type==='sticker'){if(STK.indexOf(d.s)>-1)showSticker(String(d.who||'?').slice(0,16),d.s)}
+  else if(d.type==='sync'&&typeof d.t==='number'){
+    applying=true;
+    var lat=d.p?Math.min(2,Math.max(0,(Date.now()-d.at)/1000)):0;
+    var target=d.t+lat;
+    if(Math.abs(v.currentTime-target)>1.2)v.currentTime=target;
+    if(d.p&&v.paused)v.play().catch(function(){status('Tap play once so your browser allows sync.')});
+    if(!d.p&&!v.paused)v.pause();
+    setTimeout(function(){applying=false},500);
+  }
+}
+updatePills();
+})();
+</script>
+</body>
+</html>
