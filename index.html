@@ -456,7 +456,7 @@ body.theater .dock{background:#1b1626;border-color:#2e2640}
     <span class="pill lv"><i>⭐</i><b id="lvTop">1</b></span>
     <span class="chip" id="chip">Not connected</span>
     <button class="ibtn ghost" id="snd" title="Message sounds">🔔</button><span id="themes"></span>
-    <span class="ver">v20</span>
+    <span class="ver">v21</span>
   </header>
 
   <!-- Step 0: lobby -->
@@ -849,12 +849,11 @@ function updatePills(){
   $('st1').className=partner?'done':'';
   $('st1t').textContent=partner?'✨ '+them.name+' is here':(isHost?'Send your friend the invite link and wait for them to join…':'Looking for the host…');
   $('st2').className=me.file?'done':'';
-  $('ytBtn').hidden=!isHost;if(!isHost)$('ytRow').hidden=true;
   var mism=me.file&&them.file&&me.file.size!==them.file.size;
   var s2=(me.file?'You: '+me.file.name:'You: no video yet')+' · '+(partner?(them.file?them.name+': video loaded':them.name+': no video yet'):'…');
-  if(!isHost&&!me.file&&partner)s2='If the host picks a YouTube video, it loads here by itself. '+s2;
+  if(partner&&them.file&&them.file.name.indexOf('▶')===0&&!me.file)s2='Your friend chose a YouTube video. Press ▶️ YouTube and paste the same link. '+s2;
   if(vErr)s2='❌ '+vErr;
-  if(mism)s2='⚠️ Your files look different — you both need the exact same file. '+s2;
+  if(mism)s2=(me.file.name.indexOf('▶')===0?'⚠️ You pasted different YouTube links. You both need the same video. ':'⚠️ Your files look different — you both need the exact same file. ')+s2;
   var t2=$('st2t');t2.textContent=s2;t2.className=(mism||vErr)?'warn':'';
   $('st3').className=both?'done':'';
   $('ready').disabled=!(me.file&&partner);
@@ -868,6 +867,7 @@ function updatePills(){
 $('ready').onclick=function(){
   me.ready=!me.ready;
   if(me.ready&&mode==='file'){ignoreUntil=Date.now()+2500;v.play().then(function(){v.pause();v.currentTime=0}).catch(function(){})}
+  if(me.ready&&mode==='yt'&&ytOk){ignoreUntil=Date.now()+2500;try{yt.mute();yt.playVideo();setTimeout(function(){try{yt.pauseVideo();yt.seekTo(0,true);yt.unMute()}catch(e){}},500)}catch(x){}}
   updatePills();send({type:'ready',ready:me.ready,file:me.file});
   checkGo();
 };
@@ -926,7 +926,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&stage.class
 
 /* ---------- video loading ---------- */
 var vErr='',pending=null;
-function fmt(t){t=Math.round(t||0);var h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return (h?h+':'+(m<10?'0':''):'')+m+':'+(s<10?'0':'')+s}
+function fmt(t){t=Math.round(t||0);var h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return (h?h+':'+(m<10?'0':'')+m:m)+':'+(s<10?'0':'')+s}
 function fail(msg){
   me.file=null;me.ready=false;vErr=msg;pending=null;
   var em=$('empty');em.hidden=false;em.innerHTML='<span>😕</span>This file can’t be played here';
@@ -954,7 +954,7 @@ $('file').addEventListener('change',function(e){
 setTimeout(function(){},0);
 
 /* ---------- player adapter (file or YouTube) ---------- */
-var mode='file',yt=null,ytReady=false,ytPend=null;
+var mode='file',yt=null,ytReady=false,ytPend=null,ytOk=false;
 var P={
   time:function(){return mode==='yt'?(yt&&yt.getCurrentTime?yt.getCurrentTime():0):v.currentTime},
   paused:function(){if(mode==='yt'){if(!yt||!yt.getPlayerState)return true;var st=yt.getPlayerState();return st!==1&&st!==3}return v.paused},
@@ -965,21 +965,27 @@ var P={
 };
 function ytId(u){u=String(u).trim();var m=u.match(/(?:youtu\.be\/|v=|shorts\/|embed\/|live\/)([A-Za-z0-9_-]{11})/);return m?m[1]:(/^[A-Za-z0-9_-]{11}$/.test(u)?u:null)}
 function ytHash(id){var h=7;for(var i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))%1000003;return h}
-window.onYouTubeIframeAPIReady=function(){ytReady=true;if(ytPend)loadYT(ytPend.id,ytPend.remote)};
-function loadYT(id,remote){
-  mode='yt';ytPend={id:id,remote:remote};$('ytWrap').hidden=false;v.style.display='none';$('empty').hidden=true;
+window.onYouTubeIframeAPIReady=function(){ytReady=true;if(ytPend)loadYT(ytPend.id)};
+function ytMake(id){
+  yt=new YT.Player('ytp',{width:'100%',height:'100%',videoId:id,playerVars:{playsinline:1,rel:0,modestbranding:1},events:{
+    onReady:function(){ytOk=true;if(ytPend&&ytPend.id!==id)yt.cueVideoById(ytPend.id)},
+    onStateChange:ytState,
+    onError:function(){toast('This YouTube video can’t be embedded. Try another one.')}
+  }});
+}
+function loadYT(id){
+  mode='yt';ytPend={id:id};try{v.pause()}catch(e){}
+  $('ytWrap').hidden=false;v.style.display='none';$('empty').hidden=true;
   if(!(window.YT&&YT.Player)){
     if(!document.getElementById('ytapi')){var t=document.createElement('script');t.id='ytapi';t.src='https://www.youtube.com/iframe_api';document.head.appendChild(t)}
     status('Loading YouTube…');return;
   }
-  ytReady=true;
-  if(yt&&yt.cueVideoById)yt.cueVideoById(id);
-  else yt=new YT.Player('ytp',{width:'100%',height:'100%',videoId:id,playerVars:{playsinline:1,rel:0,modestbranding:1},events:{onStateChange:ytState,onError:function(){toast('This YouTube video can’t be embedded. Try another one.')}}});
+  if(!yt)ytMake(id);else if(ytOk)yt.cueVideoById(id);
   me.file={name:'▶ YouTube video',size:ytHash(id)};me.ready=false;vErr='';updatePills();
-  if(!remote){send({type:'yt',id:id},1);send({type:'ready',ready:false,file:me.file})}
+  send({type:'ready',ready:false,file:me.file});
 }
 $('ytBtn').onclick=function(){$('ytRow').hidden=!$('ytRow').hidden};
-function ytGo(){var id=ytId($('ytUrl').value);if(!id){toast('That doesn’t look like a YouTube link');return}loadYT(id,false);$('ytRow').hidden=true}
+function ytGo(){var id=ytId($('ytUrl').value);if(!id){toast('That doesn’t look like a YouTube link');return}loadYT(id);$('ytRow').hidden=true}
 $('ytGo').onclick=ytGo;$('ytUrl').addEventListener('keydown',function(e){if(e.key==='Enter')ytGo()});
 
 /* ---------- video sync ---------- */
@@ -1347,7 +1353,7 @@ function say(t){var e=$('say');e.textContent=t||PHR[Math.floor(Math.random()*PHR
 function sync(){send({type:'cafe',items:cafe.me})}
 function sendAv(){send({type:'av',c:av})}
 function sendDec(){send({type:'dec',d:dec})}
-function ytResend(){if(isHost&&mode==='yt'&&ytPend)send({type:'yt',id:ytPend.id},1)}
+function ytResend(){}
 function munch(id){var e=$(id);e.classList.remove('mn');void e.getBoundingClientRect();e.classList.add('mn')}
 function heart(k){var f=document.createElement('div');f.className='fl';f.textContent='⭐';f.style.left=(k==='me'?72:24)+'%';f.style.top='40%';$('cafeTbl').appendChild(f);setTimeout(function(){f.remove()},1500)}
 function drawCafe(){
@@ -1485,7 +1491,6 @@ function extra(d){
   if(d.type==='poll'){pollRecv(d);return true}
   if(d.type==='st'&&inSt(d.s)){setThSt(d.s);return true}
   if(d.type==='restore'&&Array.isArray(d.items)&&!cafe.me.length){cafe.me=d.items.filter(function(x){return Array.isArray(x)&&typeof x[0]==='string'&&x[0].length<=4&&typeof x[1]==='number'}).slice(0,6).map(function(x){return [x[0],Math.max(0,Math.min(2,x[1]))]});sync();drawCafe();return true}
-  if(d.type==='yt'&&typeof d.id==='string'&&/^[A-Za-z0-9_-]{11}$/.test(d.id)){loadYT(d.id,true);toast('▶️ '+them.name+' picked a YouTube video');return true}
   if(d.type==='g'&&d.st){
     var S=d.st;
     if(d.g==='c4'&&Array.isArray(S.b)&&S.b.length===42){c4=S;if(!Array.isArray(c4.wc))c4.wc=[];drawC4();ping()}
